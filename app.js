@@ -7,14 +7,14 @@
 
   // ---------- Configuração ----------
   const CONFIG = {
-    SITE: '',                       // vazio = usa o domínio onde o site estiver publicado
+    SITE: 'tropadoulysses.com/colinha', // endereço impresso no rodapé da colinha
     SITE_PADRAO: 'colinhadomito.com.br',
     UF: 'MT',
     UF_NOME: 'MATO GROSSO',
     ANO: 2026,
     ELEICAO: '20322002026',          // "Eleição Geral Federal 2026" no DivulgaCandContas
     DADOS_URL: 'candidatos.json',
-    TSE_PROXY: '/tse',               // rewrite do vercel.json para divulgacandcontas.tse.jus.br/divulga/rest
+    TSE_PROXY: 'tse',                // relativo ao <base href="/colinha/">: /colinha/tse → TSE (vercel.json)
     ARQUIVO: 'colinha-ulysses-moraes-20022.png',
   };
 
