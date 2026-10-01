@@ -57,6 +57,10 @@
 
   const PREVIA = !!window.__PREVIA__;
   const TSE_DIRETO = 'https://divulgacandcontas.tse.jus.br/divulga/rest';
+  // Aparelho e navegador: muda o jeito de salvar a imagem
+  const UA = navigator.userAgent || '';
+  const IN_APP = /Instagram|FBAN|FBAV|FB_IAB|FBIOS|FB4A|FBMD|Messenger|WhatsApp|TikTok|musical_ly|Bytedance|Kwai|Snapchat|Line\/|Twitter|LinkedInApp|Pinterest|GSA\//i.test(UA);
+  const IOS = /iP(hone|ad|od)/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const $ = (s, el = document) => el.querySelector(s);
   const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
@@ -344,10 +348,11 @@
     return h;
   }
 
-  function carregarImagem(src) {
+  function carregarImagem(src, cors) {
     return new Promise(res => {
       if (!src) return res(null);
       const img = new Image();
+      if (cors) img.crossOrigin = 'anonymous';
       img.onload = () => res(img);
       img.onerror = () => res(null);
       img.src = src;
@@ -371,7 +376,8 @@
       if (o.fixed) return carregarImagem(o.foto);
       const c = state.found[o.id];
       if (!c || !c.id || PREVIA) return null;
-      return carregarImagem(fotoProxy(c.id, o.cod)); // mesmo domínio: pode ir para o canvas
+      // 1º pelo atalho /tse (mesmo domínio); 2º direto no TSE, só se ele liberar CORS (senão fica o ícone)
+      return (await carregarImagem(fotoProxy(c.id, o.cod))) || carregarImagem(fotoDireta(c.id, o.cod), true);
     }));
   }
 
@@ -515,8 +521,10 @@
     if (state.url) URL.revokeObjectURL(state.url);
     state.blob = blob;
     state.url = URL.createObjectURL(blob);
-    $('#result-img').src = state.url;
-    $('#print-img').src = state.url;
+    // data: em vez de blob: para o "tocar e segurar > Salvar imagem" funcionar também em navegadores de app
+    const dataUrl = await new Promise(res => { const f = new FileReader(); f.onload = () => res(f.result); f.onerror = () => res(state.url); f.readAsDataURL(blob); });
+    $('#result-img').src = dataUrl;
+    $('#print-img').src = dataUrl;
   }
 
   // ---------- Janelas e ações ----------
@@ -528,10 +536,12 @@
     if (typeof d.close === 'function') d.close(); else d.removeAttribute('open');
   }
   let statusTimer = 0;
-  function status(t) {
+  function status(t, fixo) {
     const el = $('#status'); el.textContent = t;
-    clearTimeout(statusTimer); statusTimer = setTimeout(() => { el.textContent = ''; }, 6000);
+    clearTimeout(statusTimer);
+    if (!fixo) statusTimer = setTimeout(() => { el.textContent = ''; }, 7000);
   }
+  const DICA_APP = 'Para salvar: toque e segure na colinha e escolha "Salvar imagem". Se não aparecer, toque em ⋯ e escolha "Abrir no navegador".';
 
   function linkAtual() {
     const p = new URLSearchParams();
@@ -562,18 +572,36 @@
   async function baixar() {
     if (!state.blob) return;
     track('baixar');
-    const dl = await state.downloads;
-    if (dl) {
-      try { await dl.save({ filename: CONFIG.ARQUIVO, data: state.blob }); status('Colinha salva.'); }
-      catch (e) { if (!e || e.code !== 'declined') status('Não deu para salvar aqui. Toque e segure a imagem para salvar.'); }
-      return;
+    if (PREVIA) {
+      const dl = await state.downloads;
+      if (dl) {
+        try { await dl.save({ filename: CONFIG.ARQUIVO, data: state.blob }); status('Colinha salva.'); }
+        catch (e) { if (!e || e.code !== 'declined') status('Não deu para salvar aqui. Toque e segure a imagem para salvar.'); }
+        return;
+      }
     }
+    // iPhone e navegadores de app (Instagram, Facebook, WhatsApp): a folha do sistema tem "Salvar imagem" → galeria
+    if ((IOS || IN_APP) && navigator.canShare) {
+      const arq = new File([state.blob], CONFIG.ARQUIVO, { type: 'image/png' });
+      if (navigator.canShare({ files: [arq] })) {
+        try { await navigator.share({ files: [arq] }); status('Pronto. Se escolheu "Salvar imagem", ela está na sua galeria.'); return; }
+        catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+    }
+    // Navegador de app sem folha de compartilhar: download bloqueado pelo app
+    if (IN_APP) { status(DICA_APP, true); $('#result-img').scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+    // Android e computador: download direto
     const a = document.createElement('a');
-    a.href = state.url; a.download = CONFIG.ARQUIVO;
+    a.href = state.url; a.download = CONFIG.ARQUIVO; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
-    status('Colinha baixada.');
+    status(IOS ? 'Colinha baixada em Arquivos > Downloads. Para a galeria, toque e segure na imagem e escolha "Salvar imagem".'
+               : 'Colinha baixada. Ela está na pasta Downloads do aparelho.');
   }
-  function imprimir() { track('imprimir'); window.print(); }
+  function imprimir() {
+    track('imprimir');
+    if (IN_APP) { status('Para imprimir, abra no navegador: toque em ⋯ e escolha "Abrir no navegador". Ou salve a colinha e imprima a imagem.', true); return; }
+    window.print();
+  }
   async function copiarLink(doCompartilhar) {
     if (!doCompartilhar) track('copiar_link');
     const l = linkAtual();
@@ -611,7 +639,9 @@
     try {
       await Promise.all(Object.values(state.pending));
       await gerar();
-      $('#manual-copy').hidden = true; $('#status').textContent = PREVIA && !(await state.downloads) ? 'Toque e segure a imagem para salvar.' : '';
+      $('#manual-copy').hidden = true;
+      if (IN_APP) status(DICA_APP, true);
+      else status(PREVIA && !(await state.downloads) ? 'Toque e segure a imagem para salvar.' : '', true);
       abrir($('#result'));
       track('gerar');
     } catch (_) {
