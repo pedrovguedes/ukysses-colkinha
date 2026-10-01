@@ -1,0 +1,9 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/tse/:path*", "destination": "https://divulgacandcontas.tse.jus.br/divulga/rest/:path*" }
+  ],
+  "headers": [
+    { "source": "/candidatos.json", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300" }] }
+  ]
+}

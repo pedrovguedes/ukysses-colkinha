@@ -1,0 +1,46 @@
+COLINHA DO MITO · ULYSSES MORAES 20022 (MT)
+============================================
+
+COMO SUBIR NA VERCEL
+Crie um projeto novo na Vercel e suba todos estes arquivos soltos, sem pasta:
+
+  index.html                     página da colinha
+  politicas-de-privacidade.html  política de privacidade (LGPD + Meta Pixel)
+  app.js                         funcionamento da colinha
+  style.css                      visual (fonte Archivo já embutida)
+  candidatos.json                candidatos do TSE: MT + presidente (01/10/2026)
+  ulysses-moraes.webp            foto do Ulysses (fundo transparente)
+  flavio-bolsonaro.webp          foto do Flávio (fundo transparente)
+  favicon.png                    ícone da aba
+  og.jpg                         imagem da prévia do link no WhatsApp
+  vercel.json                    endereços limpos e a consulta ao TSE em /tse
+
+Não precisa de comando de build. Depois ligue o domínio em Settings > Domains.
+
+O vercel.json é necessário:
+  - /politicas-de-privacidade abre sem o ".html";
+  - /tse busca no TSE, ao vivo, os candidatos e as fotos que faltarem.
+
+PIXEL DA META
+Já instalado (ID 4011607199145906) no index.html e na política de privacidade.
+Os números digitados nunca vão para a Meta: o site apaga os números do endereço
+antes de carregar o Pixel e envia só eventos gerais ("gerar", "baixar",
+"compartilhar", "imprimir", "copiar_link", "trocar_modelo") com o modelo escolhido.
+
+DEPOIS QUE TIVER O DOMÍNIO
+No index.html, troque  content="og.jpg"  pelo endereço completo, por exemplo:
+  content="https://SEU-DOMINIO/og.jpg"
+Assim a imagem aparece certinha quando o link for colado no WhatsApp.
+O rodapé da colinha mostra sozinho o domínio onde o site estiver publicado.
+
+E-MAIL DE PRIVACIDADE
+A política usa o direct do Instagram @ulysses_moraes como contato.
+Para trocar por e-mail, abra politicas-de-privacidade.html e preencha
+  var EMAIL = '';
+no final do arquivo.
+
+ATUALIZAR A BASE DO TSE (opcional)
+Com o Node 18+ instalado, na pasta dos arquivos:
+  node coletar-tse.mjs
+Isso regrava o candidatos.json direto do TSE. Este arquivo (coletar-tse.mjs) e o
+LEIAME não precisam ir para o site.
