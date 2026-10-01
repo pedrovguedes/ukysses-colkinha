@@ -1,6 +1,11 @@
 {
   "cleanUrls": true,
   "rewrites": [
+    { "source": "/colinha", "destination": "/" },
+    { "source": "/colinha/", "destination": "/" },
+    { "source": "/colinha/tse/:path*", "destination": "https://divulgacandcontas.tse.jus.br/divulga/rest/:path*" },
+    { "source": "/colinha/politicas-de-privacidade", "destination": "/politicas-de-privacidade" },
+    { "source": "/colinha/:path*", "destination": "/:path*" },
     { "source": "/tse/:path*", "destination": "https://divulgacandcontas.tse.jus.br/divulga/rest/:path*" }
   ],
   "headers": [
